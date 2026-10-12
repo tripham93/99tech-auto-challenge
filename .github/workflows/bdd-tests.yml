@@ -1,0 +1,44 @@
+name: BDD Tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bdd-tests:
+    name: BDD tests (Chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run BDD tests
+        run: npm run test:bdd
+        env:
+          BROWSER: chromium
+          HEADLESS: "true"
+          BASE_URL: ${{ vars.BASE_URL || 'https://www.demoblaze.com' }}
+          DEMOBLAZE_USERNAME: ${{ secrets.DEMOBLAZE_USERNAME }}
+          DEMOBLAZE_PASSWORD: ${{ secrets.DEMOBLAZE_PASSWORD }}
+      - name: Build Allure report
+        if: always()
+        run: npm run report:allure
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bdd-test-reports
+          path: |
+            allure-results/
+            allure-report/
+            test-results/
+          retention-days: 14

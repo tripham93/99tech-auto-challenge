@@ -1,0 +1,43 @@
+name: k6 Performance Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  performance:
+    name: k6 performance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Validate performance configuration
+        env:
+          PERFORMANCE_TARGET: ${{ vars.PERFORMANCE_TARGET }}
+          DEMOBLAZE_USERNAME: ${{ secrets.DEMOBLAZE_USERNAME }}
+          DEMOBLAZE_PASSWORD: ${{ secrets.DEMOBLAZE_PASSWORD }}
+        run: |
+          test -n "$PERFORMANCE_TARGET" || { echo "Set the PERFORMANCE_TARGET repository variable."; exit 1; }
+          test -n "$DEMOBLAZE_USERNAME" || { echo "Set the DEMOBLAZE_USERNAME repository secret."; exit 1; }
+          test -n "$DEMOBLAZE_PASSWORD" || { echo "Set the DEMOBLAZE_PASSWORD repository secret."; exit 1; }
+          node -e 'const host = new URL(process.env.PERFORMANCE_TARGET).hostname; if (host === "demoblaze.com" || host.endsWith(".demoblaze.com")) { console.error("Use a dedicated performance environment, not the shared DemoBlaze site."); process.exit(1); }'
+      - name: Run k6 test
+        env:
+          PERFORMANCE_TARGET: ${{ vars.PERFORMANCE_TARGET }}
+          DEMOBLAZE_USERNAME: ${{ secrets.DEMOBLAZE_USERNAME }}
+          DEMOBLAZE_PASSWORD: ${{ secrets.DEMOBLAZE_PASSWORD }}
+        run: |
+          mkdir -p performance/reports
+          k6 run \
+            -e "PERFORMANCE_TARGET=$PERFORMANCE_TARGET" \
+            -e "DEMOBLAZE_USERNAME=$DEMOBLAZE_USERNAME" \
+            -e "DEMOBLAZE_PASSWORD=$DEMOBLAZE_PASSWORD" \
+            performance/login-smoke.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-performance-report
+          path: performance/reports/
+          retention-days: 14

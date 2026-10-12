@@ -40,6 +40,11 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+k6-results.json
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
