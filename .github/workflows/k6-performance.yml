@@ -14,26 +14,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: grafana/setup-k6-action@v1
       - name: Validate performance configuration
-        id: target
         env:
           PERFORMANCE_TARGET: ${{ vars.PERFORMANCE_TARGET }}
           DEMOBLAZE_USERNAME: ${{ secrets.DEMOBLAZE_USERNAME }}
           DEMOBLAZE_PASSWORD: ${{ secrets.DEMOBLAZE_PASSWORD }}
         run: |
           test -n "$PERFORMANCE_TARGET" || { echo "Set the PERFORMANCE_TARGET repository variable."; exit 1; }
-          host=$(node -e 'console.log(new URL(process.env.PERFORMANCE_TARGET).hostname)')
-          case "$host" in
-            demoblaze.com|*.demoblaze.com)
-              echo "should_run=false" >> "$GITHUB_OUTPUT"
-              echo "::notice::k6 skipped: configure a dedicated performance target instead of the shared DemoBlaze site."
-              exit 0
-              ;;
-          esac
           test -n "$DEMOBLAZE_USERNAME" || { echo "Set the DEMOBLAZE_USERNAME repository secret."; exit 1; }
           test -n "$DEMOBLAZE_PASSWORD" || { echo "Set the DEMOBLAZE_PASSWORD repository secret."; exit 1; }
-          echo "should_run=true" >> "$GITHUB_OUTPUT"
       - name: Run k6 test
-        if: steps.target.outputs.should_run == 'true'
         env:
           PERFORMANCE_TARGET: ${{ vars.PERFORMANCE_TARGET }}
           DEMOBLAZE_USERNAME: ${{ secrets.DEMOBLAZE_USERNAME }}
@@ -46,7 +35,7 @@ jobs:
             -e "DEMOBLAZE_PASSWORD=$DEMOBLAZE_PASSWORD" \
             performance/login-smoke.js
       - uses: actions/upload-artifact@v4
-        if: always() && steps.target.outputs.should_run == 'true'
+        if: always()
         with:
           name: k6-performance-report
           path: performance/reports/
